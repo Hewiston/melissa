@@ -1,0 +1,12 @@
+{
+  "device_id": "19f77313-90a3-4a56-8610-89c8dd4a6a7a",
+  "user_id": null,
+  "name": null,
+  "status": "pending",
+  "user_code": "0061-4359",
+  "user_code_expires_at": 1762686372,
+  "device_token": null,
+  "created_at": "2025-11-09T10:56:12Z",
+  "updated_at": "2025-11-09T10:56:12Z",
+  "verification_uri": "http://localhost:8000/link"
+}

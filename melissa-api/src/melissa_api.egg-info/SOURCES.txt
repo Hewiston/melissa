@@ -6,7 +6,15 @@ src/melissa_api.egg-info/dependency_links.txt
 src/melissa_api.egg-info/requires.txt
 src/melissa_api.egg-info/top_level.txt
 src/routes/__init__.py
+src/routes/artifacts.py
 src/routes/compile.py
+src/routes/devices.py
 src/routes/health.py
+src/routes/link.py
+src/routes/strategies.py
 src/services/__init__.py
 src/services/signer.py
+src/services/validator.py
+src/storage/devrepo.py
+src/storage/fsrepo.py
+src/storage/safe.py

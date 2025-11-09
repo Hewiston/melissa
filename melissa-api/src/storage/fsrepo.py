@@ -1,16 +1,17 @@
-import json
+import json, pathlib, hashlib, time
 import os
-import pathlib
-import time
-import hashlib
-from typing import Any, Dict, Optional
+from typing import Optional, Dict, Any, List
+from .safe import validate_uuid, validate_semver, safe_join
+
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2] / "storage_data"
-STRATS_DIR = ROOT / "strategies"
-ART_DIR = ROOT / "artifacts"
-
-for p in (STRATS_DIR, ART_DIR):
+STRAT_DIR = ROOT / "strategies"
+ART_DIR   = ROOT / "artifacts"
+for p in (STRAT_DIR, ART_DIR):
     p.mkdir(parents=True, exist_ok=True)
+
+
 
 def _now_iso():
     import datetime as dt
@@ -42,11 +43,37 @@ def list_strategies(user_id: str) -> list[Dict[str, Any]]:
             out.append(j)
     return out
 
-def get_strategy(sid: str) -> Optional[Dict[str, Any]]:
-    p = STRATS_DIR / f"{sid}.json"
+
+def _strategy_path(strategy_id: str) -> pathlib.Path:
+    validate_uuid(strategy_id, "strategy_id")
+    return safe_join(STRAT_DIR, f"{strategy_id}.json")
+
+def _artifact_path(strategy_id: str, semver: str) -> pathlib.Path:
+    validate_uuid(strategy_id, "strategy_id")
+    validate_semver(semver)
+    d = safe_join(ART_DIR, strategy_id)
+    d.mkdir(parents=True, exist_ok=True)
+    return safe_join(d, f"{semver}.bundle.json")
+
+
+def get_strategy(strategy_id: str) -> Optional[Dict[str, Any]]:
+    p = _strategy_path(strategy_id)
     if not p.exists():
         return None
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+def save_strategy(doc: Dict[str, Any]) -> None:
+    p = _strategy_path(doc["id"])
+    p.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def list_versions(strategy_id: str) -> List[Dict[str, Any]]:
+    s = get_strategy(strategy_id)
+    if not s:
+        return []
+    return s.get("versions", [])
+
 
 def update_draft(sid: str, draft: Dict[str, Any]) -> Dict[str, Any]:
     cur = get_strategy(sid)
@@ -57,39 +84,26 @@ def update_draft(sid: str, draft: Dict[str, Any]) -> Dict[str, Any]:
     (STRATS_DIR / f"{sid}.json").write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
     return cur
 
-def save_artifact(sid: str, semver: str, bundle: Dict[str, Any]) -> Dict[str, Any]:
-    # bundle -> bytes (minified)
-    raw = json.dumps(bundle, separators=(",", ":"), ensure_ascii=False).encode()
-    sha = hashlib.sha256(raw).hexdigest()
-    etag = f'W/"{sha}"'
+def save_artifact(strategy_id: str, semver: str, bundle: Dict[str, Any], sha256: str, etag: str) -> Dict[str, Any]:
+    # политика: запрещаем дубликаты semver → 409 handled в роутере
+    ap = _artifact_path(strategy_id, semver)
+    ap.write_text(json.dumps(bundle, ensure_ascii=False, indent=2), encoding="utf-8")
+    s = get_strategy(strategy_id)
+    assert s, "strategy must exist"
+    if any(v["semver"] == semver for v in s.get("versions", [])):
+        # не обновляем мету здесь — роутер решает: либо 409, либо обновление записи
+        return {"already_exists": True}
+    s.setdefault("versions", []).append({
+        "semver": semver, "sha256": sha256, "etag": etag, "created_at": int(time.time())
+    })
+    save_strategy(s)
+    return {"already_exists": False}
 
-    # путь артефакта
-    base = ART_DIR / sid
-    base.mkdir(parents=True, exist_ok=True)
-    path = base / f"{semver}.bundle.json"
-    path.write_text(raw.decode("utf-8"), encoding="utf-8")
-
-    # обновить карточку стратегии
-    cur = get_strategy(sid)
-    if not cur:
-        raise FileNotFoundError("strategy not found")
-    # не дублировать запись
-    if not any(v["semver"] == semver for v in cur["versions"]):
-        cur["versions"].append({
-            "semver": semver,
-            "sha256": sha,
-            "etag": etag,
-            "created_at": _now_iso()
-        })
-        cur["updated_at"] = _now_iso()
-        (STRATS_DIR / f"{sid}.json").write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    # meta для ответа
-    return {
-        "sha256": sha,
-        "etag": etag,
-        "artifact_rel": f"{sid}/{semver}.bundle.json"
-    }
+def read_artifact(strategy_id: str, semver: str) -> Optional[Dict[str, Any]]:
+    ap = _artifact_path(strategy_id, semver)
+    if not ap.exists():
+        return None
+    return json.loads(ap.read_text(encoding="utf-8"))
 
 def load_artifact_rel(rel_path: str) -> Optional[tuple[bytes, str]]:
     p = ART_DIR / rel_path

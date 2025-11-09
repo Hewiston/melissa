@@ -1,9 +1,14 @@
+import os
 from fastapi import APIRouter, HTTPException, Header, Body
 from typing import Dict, Any, Optional
 from src.storage.devrepo import (
     register_device, activate_device_by_code, poll_device, device_by_token, grant_strategy, list_grants
 )
 from src.storage.fsrepo import get_strategy
+from src.storage.safe import validate_uuid, validate_semver
+ADMIN_TOKEN = os.getenv("API_ADMIN_TOKEN")
+
+validate_uuid(device_id, "device_id")
 
 router = APIRouter()
 
@@ -20,6 +25,13 @@ def activate(payload: Dict[str, Any]):
     Тело: { "user_code": "ABCD-1234" }
     Подразумеваем, что вызывается от имени пользователя (MVP без auth: демо-пользователь).
     """
+    sid = payload.get("strategy_id")
+    if not sid: ...
+    validate_uuid(sid, "strategy_id")
+    pinned = payload.get("pinned_semver")
+    if pinned is not None:
+        validate_semver(pinned)
+
     code = payload.get("user_code")
     if not code:
         raise HTTPException(422, "user_code required")
@@ -41,11 +53,11 @@ def poll(payload: Dict[str, Any]):
     return poll_device(dev_id)
 
 @router.post("/{device_id}/grants")
-def set_grant(device_id: str, payload: Dict[str, Any]):
-    """
-    Тело: { "strategy_id":"...", "allow_latest":true, "pinned_semver":null }
-    Выдаёт устройству доступ к стратегии.
-    """
+def set_grant(device_id: str, payload: Dict[str, Any], x_admin_token: str = Header(default="")):
+    if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="admin token required")
+    validate_uuid(device_id, "device_id")
+    
     sid = payload.get("strategy_id")
     allow_latest = payload.get("allow_latest")
     pinned = payload.get("pinned_semver")

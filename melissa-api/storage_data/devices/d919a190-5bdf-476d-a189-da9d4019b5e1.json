@@ -1,0 +1,12 @@
+{
+  "device_id": "d919a190-5bdf-476d-a189-da9d4019b5e1",
+  "user_id": "u_demo",
+  "name": null,
+  "status": "active",
+  "user_code": null,
+  "user_code_expires_at": null,
+  "device_token": "YgiLVqCI8Cf3FjTHTOxzihO8T_xEROimSPT8sL95qLk",
+  "created_at": "2025-11-09T11:05:48Z",
+  "updated_at": "2025-11-09T11:06:14Z",
+  "verification_uri": "http://localhost:8000/link"
+}

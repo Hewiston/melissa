@@ -35,12 +35,12 @@ def get_strategy_by_id(sid: str):
     return s
 
 @router.put("/{sid}/draft")
-def put_draft(sid: str, draft: Dict[str, Any]):
-    # валидация по схемам
+def put_draft(sid: str, body: dict):
+    validate_uuid(sid, "strategy_id")
     try:
-        validate_all(draft)
-    except ValueError as ve:
-        raise HTTPException(422, f"schema: {ve}") from ve
+        validate_all(body)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     s = get_strategy(sid)
     if not s:
         raise HTTPException(404, "not found")
@@ -105,3 +105,9 @@ def publish_version(sid: str, body: Dict[str, Any]):
         "etag": meta["etag"],
         "sig_b64": sig_b64
     }
+
+
+vers = list_versions(sid)
+if any(v["semver"] == req.semver for v in vers):
+    raise HTTPException(status_code=409, detail="Version already exists; use a new semver")
+res = save_artifact(sid, req.semver, bundle, sha256=sha, etag=etag)

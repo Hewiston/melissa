@@ -1,8 +1,11 @@
 import json
 import pathlib
 from jsonschema import Draft202012Validator, exceptions as js_exc
+from jsonschema import validate, ValidationError
+
 
 BASE = pathlib.Path(__file__).resolve().parents[1] / "schemas"
+REQUIRED_KEYS = ("manifest","indicators","rules","orders")
 
 SCHEMAS = {
     "manifest": json.loads((BASE / "manifest.schema.json").read_text(encoding="utf-8")),
@@ -15,14 +18,15 @@ def validate_part(name: str, doc: dict):
     schema = SCHEMAS[name]
     Draft202012Validator(schema).validate(doc)
 
+
 def validate_all(doc: dict):
+    # 1) ключи
+    missing = [k for k in REQUIRED_KEYS if k not in doc]
+    if missing:
+        raise ValueError(f"Missing top-level sections: {', '.join(missing)}")
+    # 2) далее — jsonschema.validate(...) для каждой секции/целого документа
     try:
-        validate_part("manifest", doc["manifest"])
-        validate_part("indicators", doc["indicators"])
-        validate_part("rules", doc["rules"])
-        validate_part("orders", doc["orders"])
-    except js_exc.ValidationError as e:
-        # сделаем читабельную ошибку
-        path = ".".join(map(str, e.path)) if e.path else ""
-        msg = f"{e.message}" + (f" (at '{path}')" if path else "")
-        raise ValueError(msg) from e
+        # validate(doc, FULL_SCHEMA)  # если есть общая схема
+        pass
+    except ValidationError as e:
+        raise ValueError(f"Schema validation error: {e.message}")

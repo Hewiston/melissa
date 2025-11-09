@@ -1,10 +1,15 @@
 from fastapi import APIRouter, HTTPException, Header, Response
 from src.storage.fsrepo import load_artifact_rel
+from src.storage.safe import validate_uuid, validate_semver
+
+validate_uuid(strategy_id, "strategy_id")
+validate_semver(semver)
 
 router = APIRouter()
 
 @router.get("/{sid}/{semver}")
 def get_artifact(sid: str, semver: str, if_none_match: str | None = Header(default=None, convert_underscores=False)):
+    
     rel = f"{sid}/{semver}.bundle.json"
     obj = load_artifact_rel(rel)
     if not obj:

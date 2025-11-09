@@ -8,5 +8,6 @@ melissa_engine.egg-info/top_level.txt
 src/__init__.py
 src/cli.py
 src/core/schema.py
+src/core/state.py
 src/core/verify.py
 src/runtime/loader.py

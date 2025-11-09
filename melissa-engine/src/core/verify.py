@@ -2,28 +2,30 @@ import base64
 import json
 import hashlib
 from nacl.signing import VerifyKey
+from nacl.exceptions import BadSignatureError
 
-def verify_bundle(bundle: dict, public_key_b64: str) -> None:
-    # 1) проверяем, что структура есть
-    if "payload" not in bundle or "signature" not in bundle:
-        raise ValueError("Invalid bundle structure")
 
+def _canonical_bytes(payload: dict) -> bytes:
+    # исключаем manifest.hash перед сериализацией
+    manifest = payload.get("manifest", {})
+    orig_hash = manifest.pop("hash", None)
+    try:
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    finally:
+        if orig_hash is not None:
+            manifest["hash"] = orig_hash
+
+def verify_bundle(bundle: dict, pubkey_b64: str):
     payload = bundle["payload"]
-    sig_b64 = bundle["signature"].get("sig_b64")
-    alg = bundle["signature"].get("alg")
+    sig_b64 = bundle["signature_b64"]
 
-    if alg != "ed25519":
-        raise ValueError("Unsupported signature alg")
-
-    # 2) сериализуем payload строго
-    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
-
-    # 3) сверка sha256
+    raw = _canonical_bytes(payload)
     sha = hashlib.sha256(raw).hexdigest()
-    mhash = payload.get("manifest", {}).get("hash")
-    if sha != mhash:
-        raise ValueError(f"Hash mismatch: calc={sha}, manifest={mhash}")
+    if payload.get("manifest", {}).get("hash") != sha:
+        raise ValueError("Hash mismatch")
 
-    # 4) верификация подписи
-    vk = VerifyKey(base64.b64decode(public_key_b64))
-    vk.verify(raw, base64.b64decode(sig_b64))  # бросит исключение при неверной подписи
+    vk = VerifyKey(base64.b64decode(pubkey_b64))
+    try:
+        vk.verify(raw, base64.b64decode(sig_b64))
+    except BadSignatureError:
+        raise ValueError("Signature mismatch")

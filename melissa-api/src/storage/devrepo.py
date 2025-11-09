@@ -1,13 +1,11 @@
-import json
-import pathlib
-import uuid
-import time
-import secrets
+import json, pathlib, uuid, time, secrets
 from typing import Optional, Dict, Any, List
+from .safe import validate_uuid, safe_join
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2] / "storage_data"
-DEV_DIR = ROOT / "devices"
-GRANTS_DIR = ROOT / "grants"
+DEV_DIR   = ROOT / "devices"
+GRANTS_DIR= ROOT / "grants"
 for p in (DEV_DIR, GRANTS_DIR):
     p.mkdir(parents=True, exist_ok=True)
 
@@ -16,10 +14,12 @@ def _now_iso():
     return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 def _dev_path(device_id: str) -> pathlib.Path:
-    return DEV_DIR / f"{device_id}.json"
+    validate_uuid(device_id, "device_id")
+    return safe_join(DEV_DIR, f"{device_id}.json")
 
 def _grant_path(device_id: str) -> pathlib.Path:
-    return GRANTS_DIR / f"{device_id}.json"
+    validate_uuid(device_id, "device_id")
+    return safe_join(GRANTS_DIR, f"{device_id}.json")
 
 def register_device(verification_uri: str = "http://localhost:8000/link") -> Dict[str, Any]:
     device_id = str(uuid.uuid4())
