@@ -18,13 +18,13 @@ def ensure_no_separators(s: str, what: str):
         raise HTTPException(status_code=422, detail=f"Invalid {what}")
 
 def safe_join(root: pathlib.Path, *parts: str) -> pathlib.Path:
-    # запретить разделители в частях и нормализовать
     for i, p in enumerate(parts):
         ensure_no_separators(p, f"path segment {i}")
     p = (root / pathlib.Path(*parts)).resolve()
     root = root.resolve()
-    if not str(p).startswith(str(root) + "\\") and str(p) != str(root):
-        # на *nix добавь '/' вместо '\\'
-        if not str(p).startswith(str(root) + "/") and str(p) != str(root):
-            raise HTTPException(status_code=400, detail="Path outside of storage root")
+
+    good_windows = str(p).startswith(str(root) + "\\") or str(p) == str(root)
+    good_posix   = str(p).startswith(str(root) + "/")  or str(p) == str(root)
+    if not (good_windows or good_posix):
+        raise HTTPException(status_code=400, detail="Path outside of storage root")
     return p
