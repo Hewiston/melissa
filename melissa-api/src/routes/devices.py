@@ -20,12 +20,20 @@ ADMIN_TOKEN = os.getenv("API_ADMIN_TOKEN", "")
 def register_device() -> Dict[str, Any]:
     """
     Создаёт device + user_code. Совместимо с melissa-engine (melissa link).
-    Ответ:
-      { "user_code": "ABCD-1234", "device_id": "<uuid>", "link_url": "/link" }
+    Вернём оба поля: verification_uri (то, что ожидает движок) и link_url.
     """
     user_code, device_id = create_device_link_code()
-    return {"user_code": user_code, "device_id": device_id, "link_url": "/link"}
 
+    # Бери базовый адрес из ENV при желании (по умолчанию localhost)
+    base = os.getenv("API_PUBLIC_BASE", "http://localhost:8000")
+    verification_uri = f"{base}/link"
+
+    return {
+      "user_code": user_code,
+      "device_id": device_id,
+      "verification_uri": verification_uri,  # ← ждёт движок
+      "link_url": "/link"                    # ← оставим для совместимости с вебом
+    }
 # ---------------------------
 # 2) Вариант, который мы уже использовали через веб-форму:
 #    POST /v1/devices/activate  с JSON { "user_code": "ABCD-1234" }
