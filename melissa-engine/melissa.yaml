@@ -1,0 +1,4 @@
+api_base: "http://127.0.0.1:8000"
+public_ed25519_pubkey_b64: ""
+compile_endpoint: "/v1/compile/"
+artifacts_endpoint: "/v1/artifacts"

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["position_sizing","sl","order_policy"],
+  "properties": {
+    "position_sizing": {
+      "type": "object",
+      "required": ["mode","value","leverage","max_concurrent","side"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["fixed_usdt","pct_balance"] },
+        "value": { "type": "number" },
+        "leverage": { "type": "number" },
+        "max_concurrent": { "type": "integer" },
+        "side": { "type": "string", "enum": ["long","short","both"] }
+      }
+    },
+    "exposure_limits": { "type": "object" },
+    "sl": {
+      "type": "object",
+      "required": ["type","value"],
+      "properties": {
+        "type": { "type": "string", "enum": ["pct","atr_k","structure"] },
+        "value": {}
+      }
+    },
+    "tp": { "type": "array" },
+    "trailing": { "type": "object" },
+    "order_policy": {
+      "type": "object",
+      "required": ["post_only","time_in_force","reduce_on_inverse_signal","one_signal_per_bar"],
+      "properties": {
+        "post_only": { "type": "boolean" },
+        "time_in_force": { "type": "string", "enum": ["GTC","IOC","FOK"] },
+        "reduce_on_inverse_signal": { "type": "boolean" },
+        "one_signal_per_bar": { "type": "boolean" }
+      }
+    }
+  },
+  "additionalProperties": false
+}
